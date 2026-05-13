@@ -13,6 +13,12 @@ export default function Auth() {
     if (!email.trim()) return
     setLoading(true)
     setError('')
+    const ALLOWED = 'l.frerejean04@gmail.com'
+    if (email.trim().toLowerCase() !== ALLOWED) {
+      setError("Accès réservé.")
+      setLoading(false)
+      return
+    }
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
