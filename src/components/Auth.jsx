@@ -13,13 +13,18 @@ export default function Auth() {
     if (!email.trim()) return
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
-    })
-    setLoading(false)
-    if (error) { setError(error.message); return }
-    setSent(true)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: window.location.origin },
+      })
+      if (error) throw error
+      setSent(true)
+    } catch (err) {
+      setError(err?.message ?? 'Erreur inconnue. Vérifie ta connexion et les variables Vercel.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
