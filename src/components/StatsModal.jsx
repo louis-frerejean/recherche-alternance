@@ -140,7 +140,56 @@ function PlatformStats() {
 
 // ── Modal principal ────────────────────────────────────────────────────────
 
+function GlobalStats({ candidatures, platforms }) {
+  // Kanban
+  const kTotal       = candidatures.length
+  const kRefus       = candidatures.filter(c => c.statut === 'refus').length
+  const kSansReponse = candidatures.filter(c => c.statut === 'envoye').length
+  const kEntretiens  = candidatures.filter(c => c.statut === 'entretien').length
+  const kAcceptes    = candidatures.filter(c => c.statut === 'accepte').length
+
+  // Plateformes externes
+  const pTotal       = platforms.reduce((s, p) => s + (Number(p.total)       || 0), 0)
+  const pRefus       = platforms.reduce((s, p) => s + (Number(p.refus)       || 0), 0)
+  const pSansReponse = platforms.reduce((s, p) => s + (Number(p.sansReponse) || 0), 0)
+  const pEntretiens  = platforms.reduce((s, p) => s + (Number(p.entretiens)  || 0), 0)
+
+  const total       = kTotal + pTotal
+  const refus       = kRefus + pRefus
+  const sansReponse = kSansReponse + pSansReponse
+  const entretiens  = kEntretiens + pEntretiens
+  const acceptes    = kAcceptes
+  const tauxRetour  = total > 0 ? Math.round(((total - sansReponse) / total) * 100) : 0
+
+  return (
+    <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-4 text-white">
+      <p className="text-xs font-bold uppercase tracking-widest text-violet-300 mb-3">Toutes sources confondues</p>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <GlobalKPI label="Candidatures" value={total} />
+        <GlobalKPI label="Taux de retour" value={`${tauxRetour}%`} highlight />
+        <GlobalKPI label="Entretiens" value={entretiens} />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <GlobalKPI label="Refus" value={refus} sub />
+        <GlobalKPI label="Sans réponse" value={sansReponse} sub />
+        <GlobalKPI label="Acceptés" value={acceptes} sub />
+      </div>
+    </div>
+  )
+}
+
+function GlobalKPI({ label, value, highlight, sub }) {
+  return (
+    <div className={`rounded-xl p-2 text-center ${sub ? 'bg-white/10' : 'bg-white/20'}`}>
+      <p className={`font-bold leading-tight ${highlight ? 'text-2xl text-yellow-300' : sub ? 'text-lg' : 'text-2xl'}`}>{value}</p>
+      <p className={`text-[10px] mt-0.5 leading-tight ${sub ? 'text-violet-300' : 'text-violet-200'}`}>{label}</p>
+    </div>
+  )
+}
+
 export default function StatsModal({ candidatures, onClose }) {
+  const { platforms, update, add, remove } = usePlatformStats()
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -157,6 +206,8 @@ export default function StatsModal({ candidatures, onClose }) {
         </div>
 
         <div className="overflow-y-auto flex-1 px-6 py-5 flex flex-col gap-6">
+          <GlobalStats candidatures={candidatures} platforms={platforms} />
+          <div className="h-px bg-slate-100" />
           <Section title="Candidatures sur d'autres plateformes">
             <PlatformStats />
           </Section>
