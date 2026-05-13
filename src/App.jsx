@@ -3,17 +3,18 @@ import { supabase } from './lib/supabase'
 import Auth from './components/Auth'
 import Header from './components/Header'
 import KanbanBoard from './components/KanbanBoard'
-import CandidatureModal from './components/CandidatureModal'
+import StatsView from './components/StatsView'
 import CompanyDetail from './components/CompanyDetail'
+import CandidatureModal from './components/CandidatureModal'
 import ImportExcel from './components/ImportExcel'
 import ReviewMode from './components/ReviewMode'
-import StatsModal from './components/StatsModal'
 import { useCandidatures } from './hooks/useCandidatures'
+import { usePlatformStats } from './hooks/usePlatformStats'
 import { groupByCompany } from './utils/groupCandidatures'
 import { Loader2 } from 'lucide-react'
 
 export default function App() {
-  const [session, setSession] = useState(undefined) // undefined = chargement, null = non connecté
+  const [session, setSession] = useState(undefined)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -23,36 +24,32 @@ export default function App() {
 
   if (session === undefined) return <Loader />
   if (!session) return <Auth />
-
   return <AppContent userId={session.user.id} />
 }
 
 function AppContent({ userId }) {
-  const {
-    candidatures, loading,
-    add, update, remove, updateStatut,
-    togglePriorite, setGroupPriorite,
-    importAll, migrateFromLocalStorage,
-  } = useCandidatures(userId)
+  const { candidatures, loading: loadingC, add, update, remove, updateStatut, togglePriorite, setGroupPriorite, importAll, migrateFromLocalStorage } = useCandidatures(userId)
+  const { platforms, update: updatePlatform, updateNom: updatePlatformNom, add: addPlatform, remove: removePlatform } = usePlatformStats(userId)
 
-  const [modal, setModal] = useState(null)
+  const [view, setView]           = useState('kanban')
+  const [modal, setModal]         = useState(null)
   const [openGroup, setOpenGroup] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [showImport, setShowImport] = useState(false)
-  const [showStats, setShowStats] = useState(false)
-  const [reviewIndex, setReviewIndex] = useState(null)
-  const [migrating, setMigrating] = useState(false)
-  const [migrated, setMigrated] = useState(false)
+  const [showImport, setShowImport]       = useState(false)
+  const [showReview, setShowReview]       = useState(false)
+  const [migrated, setMigrated]   = useState(false)
+
+  // Migration one-shot depuis localStorage
+  useEffect(() => {
+    if (loadingC || migrated) return
+    migrateFromLocalStorage().then(did => { if (did) setMigrated(true) })
+  }, [loadingC])
 
   const localCount = (() => {
-    try {
-      const d = localStorage.getItem('alternance_candidatures_v2')
-      return d ? JSON.parse(d).length : 0
-    } catch { return 0 }
+    try { const d = localStorage.getItem('alternance_candidatures_v2'); return d ? JSON.parse(d).length : 0 } catch { return 0 }
   })()
-
-  const showMigrationBanner = !loading && !migrated && localCount > 0 && candidatures.length === 0
-
+  const showMigrationBanner = !loadingC && !migrated && localCount > 0 && candidatures.length === 0
+  const [migrating, setMigrating] = useState(false)
   async function handleMigrate() {
     setMigrating(true)
     const did = await migrateFromLocalStorage()
@@ -60,8 +57,8 @@ function AppContent({ userId }) {
     if (did) setMigrated(true)
   }
 
-  function openAdd() { setModal({ mode: 'add' }) }
-  function openEdit(c) { setOpenGroup(null); setModal({ mode: 'edit', candidature: c }) }
+  function openAdd()    { setModal({ mode: 'add' }) }
+  function openEdit(c)  { setOpenGroup(null); setModal({ mode: 'edit', candidature: c }) }
   function closeModal() { setModal(null) }
 
   function handleSave(form) {
@@ -83,44 +80,52 @@ function AppContent({ userId }) {
     ? groupByCompany(candidatures).find(g => g.key === openGroup.key) ?? null
     : null
 
-  const reviewList = [...candidatures].sort((a, b) => (b.priorite ? 1 : 0) - (a.priorite ? 1 : 0))
-
-  if (loading) return <Loader />
+  if (loadingC) return <Loader />
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header
         candidatures={candidatures}
+        view={view}
+        onViewChange={setView}
         onAdd={openAdd}
         onImport={() => setShowImport(true)}
-        onStats={() => setShowStats(true)}
-        onReview={() => setReviewIndex(0)}
+        onReview={() => setShowReview(true)}
         onLogout={() => supabase.auth.signOut()}
       />
 
+      {/* Bannière migration */}
       {showMigrationBanner && (
         <div className="bg-violet-600 text-white px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-          <p className="text-sm font-medium">
-            🗂️ {localCount} candidatures trouvées sur cet appareil — les importer dans le cloud ?
-          </p>
-          <button
-            onClick={handleMigrate}
-            disabled={migrating}
-            className="shrink-0 bg-white text-violet-700 text-sm font-bold px-4 py-1.5 rounded-lg hover:bg-violet-50 disabled:opacity-60 transition-colors"
-          >
+          <p className="text-sm font-medium">🗂️ {localCount} candidatures trouvées sur cet appareil — les importer dans le cloud ?</p>
+          <button onClick={handleMigrate} disabled={migrating}
+            className="shrink-0 bg-white text-violet-700 text-sm font-bold px-4 py-1.5 rounded-lg hover:bg-violet-50 disabled:opacity-60">
             {migrating ? 'Import en cours…' : 'Importer'}
           </button>
         </div>
       )}
 
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <KanbanBoard
-          candidatures={candidatures}
-          onOpenGroup={setOpenGroup}
-          onToggleGroupPriorite={setGroupPriorite}
-        />
+      {/* Vue principale */}
+      <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+        {view === 'kanban' ? (
+          <KanbanBoard
+            candidatures={candidatures}
+            onOpenGroup={setOpenGroup}
+            onToggleGroupPriorite={setGroupPriorite}
+          />
+        ) : (
+          <StatsView
+            candidatures={candidatures}
+            platforms={platforms}
+            onUpdate={updatePlatform}
+            onUpdateNom={updatePlatformNom}
+            onAdd={addPlatform}
+            onRemove={removePlatform}
+          />
+        )}
       </main>
 
+      {/* Panneau détail entreprise */}
       {liveOpenGroup && (
         <CompanyDetail
           group={liveOpenGroup}
@@ -131,16 +136,19 @@ function AppContent({ userId }) {
         />
       )}
 
-      {reviewIndex !== null && (
+      {/* Mode Review */}
+      {showReview && (
         <ReviewMode
-          candidatures={reviewList}
-          startIndex={reviewIndex}
+          candidatures={candidatures}
+          startIndex={0}
           onUpdate={update}
           onTogglePriorite={togglePriorite}
-          onClose={() => setReviewIndex(null)}
+          setGroupPriorite={setGroupPriorite}
+          onClose={() => setShowReview(false)}
         />
       )}
 
+      {/* Modal ajout/édition */}
       {modal && (
         <CandidatureModal
           initial={modal.mode === 'edit' ? modal.candidature : null}
@@ -149,19 +157,15 @@ function AppContent({ userId }) {
         />
       )}
 
-      {showStats && (
-        <StatsModal candidatures={candidatures} onClose={() => setShowStats(false)} />
-      )}
-
+      {/* Import Excel */}
       {showImport && (
         <ImportExcel onImport={importAll} onClose={() => setShowImport(false)} />
       )}
 
+      {/* Confirmation suppression */}
       {deleteConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-          onClick={e => { if (e.target === e.currentTarget) setDeleteConfirm(null) }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setDeleteConfirm(null) }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4">
             <h3 className="text-base font-semibold text-slate-900">Supprimer cette candidature ?</h3>
             <p className="text-sm text-slate-500">Cette action est irréversible.</p>
