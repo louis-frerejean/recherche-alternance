@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+import Auth from './components/Auth'
 import Header from './components/Header'
 import KanbanBoard from './components/KanbanBoard'
 import CandidatureModal from './components/CandidatureModal'
@@ -7,22 +9,48 @@ import ImportExcel from './components/ImportExcel'
 import ReviewMode from './components/ReviewMode'
 import { useCandidatures } from './hooks/useCandidatures'
 import { groupByCompany } from './utils/groupCandidatures'
+import { Loader2 } from 'lucide-react'
 
 export default function App() {
-  const { candidatures, add, update, remove, updateStatut, togglePriorite, setGroupPriorite, importAll } = useCandidatures()
+  const [session, setSession] = useState(undefined) // undefined = chargement, null = non connecté
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (session === undefined) return <Loader />
+  if (!session) return <Auth />
+
+  return <AppContent userId={session.user.id} />
+}
+
+function AppContent({ userId }) {
+  const {
+    candidatures, loading,
+    add, update, remove, updateStatut,
+    togglePriorite, setGroupPriorite,
+    importAll, migrateFromLocalStorage,
+  } = useCandidatures(userId)
+
   const [modal, setModal] = useState(null)
-  const [openGroup, setOpenGroup] = useState(null) // { key, entreprise, items }
+  const [openGroup, setOpenGroup] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [showImport, setShowImport] = useState(false)
   const [reviewIndex, setReviewIndex] = useState(null)
+  const [migrated, setMigrated] = useState(false)
+
+  // Migration one-shot depuis localStorage si des données y sont
+  useEffect(() => {
+    if (loading || migrated) return
+    migrateFromLocalStorage().then(did => {
+      if (did) setMigrated(true)
+    })
+  }, [loading])
 
   function openAdd() { setModal({ mode: 'add' }) }
-
-  function openEdit(c) {
-    setOpenGroup(null)
-    setModal({ mode: 'edit', candidature: c })
-  }
-
+  function openEdit(c) { setOpenGroup(null); setModal({ mode: 'edit', candidature: c }) }
   function closeModal() { setModal(null) }
 
   function handleSave(form) {
@@ -40,20 +68,13 @@ export default function App() {
     if (deleteConfirm) { remove(deleteConfirm); setDeleteConfirm(null) }
   }
 
-  // Quand on ouvre un groupe, on re-lit depuis candidatures pour avoir les données fraîches
-  function handleOpenGroup(group) {
-    setOpenGroup(group)
-  }
-
-  // Sync le groupe ouvert après chaque modif
   const liveOpenGroup = openGroup
-    ? (() => {
-        const groups = groupByCompany(candidatures)
-        return groups.find(g => g.key === openGroup.key) ?? null
-      })()
+    ? groupByCompany(candidatures).find(g => g.key === openGroup.key) ?? null
     : null
 
   const reviewList = [...candidatures].sort((a, b) => (b.priorite ? 1 : 0) - (a.priorite ? 1 : 0))
+
+  if (loading) return <Loader />
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -62,12 +83,13 @@ export default function App() {
         onAdd={openAdd}
         onImport={() => setShowImport(true)}
         onReview={() => setReviewIndex(0)}
+        onLogout={() => supabase.auth.signOut()}
       />
 
       <main className="flex-1 overflow-hidden flex flex-col">
         <KanbanBoard
           candidatures={candidatures}
-          onOpenGroup={handleOpenGroup}
+          onOpenGroup={setOpenGroup}
           onToggleGroupPriorite={setGroupPriorite}
         />
       </main>
@@ -113,16 +135,20 @@ export default function App() {
             <h3 className="text-base font-semibold text-slate-900">Supprimer cette candidature ?</h3>
             <p className="text-sm text-slate-500">Cette action est irréversible.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                Annuler
-              </button>
-              <button onClick={confirmDelete} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
-                Supprimer
-              </button>
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+              <button onClick={confirmDelete} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg">Supprimer</button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function Loader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <Loader2 size={32} className="animate-spin text-violet-500" />
     </div>
   )
 }

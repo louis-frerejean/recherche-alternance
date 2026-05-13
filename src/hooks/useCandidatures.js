@@ -1,57 +1,82 @@
 import { useState, useEffect } from 'react'
-import INITIAL_DATA from '../data/initial.json'
+import { supabase, fromDB, toDB } from '../lib/supabase'
 
-const STORAGE_KEY = 'alternance_candidatures_v2'
-
-export function useCandidatures() {
-  const [candidatures, setCandidatures] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) return JSON.parse(stored)
-      return INITIAL_DATA
-    } catch {
-      return INITIAL_DATA
-    }
-  })
+export function useCandidatures(userId) {
+  const [candidatures, setCandidatures] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(candidatures))
-  }, [candidatures])
+    if (!userId) return
+    fetchAll()
+  }, [userId])
 
-  function add(data) {
+  async function fetchAll() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('candidatures')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!error) setCandidatures(data.map(fromDB))
+    setLoading(false)
+  }
+
+  async function add(data) {
     const newOne = {
       ...data,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     }
-    setCandidatures(prev => [newOne, ...prev])
+    setCandidatures(prev => [newOne, ...prev]) // optimistic
+    await supabase.from('candidatures').insert(toDB(newOne, userId))
     return newOne
   }
 
-  function update(id, data) {
+  async function update(id, data) {
     setCandidatures(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+    const current = candidatures.find(c => c.id === id)
+    await supabase.from('candidatures').update(toDB({ ...current, ...data }, userId)).eq('id', id)
   }
 
-  function remove(id) {
+  async function remove(id) {
     setCandidatures(prev => prev.filter(c => c.id !== id))
+    await supabase.from('candidatures').delete().eq('id', id)
   }
 
-  function updateStatut(id, statut) {
-    update(id, { statut })
+  async function updateStatut(id, statut) {
+    await update(id, { statut })
   }
 
-  function togglePriorite(id) {
-    setCandidatures(prev => prev.map(c => c.id === id ? { ...c, priorite: !c.priorite } : c))
+  async function togglePriorite(id) {
+    const c = candidatures.find(c => c.id === id)
+    if (!c) return
+    await update(id, { priorite: !c.priorite })
   }
 
-  function setGroupPriorite(ids, value) {
+  async function setGroupPriorite(ids, value) {
     const set = new Set(ids)
     setCandidatures(prev => prev.map(c => set.has(c.id) ? { ...c, priorite: value } : c))
+    await supabase.from('candidatures').update({ priorite: value }).in('id', ids)
   }
 
-  function importAll(newList) {
+  async function importAll(newList) {
     setCandidatures(newList)
+    // Vide la table et réinsère tout
+    await supabase.from('candidatures').delete().eq('user_id', userId)
+    const rows = newList.map(c => toDB({ ...c, id: c.id ?? crypto.randomUUID() }, userId))
+    await supabase.from('candidatures').insert(rows)
   }
 
-  return { candidatures, add, update, remove, updateStatut, togglePriorite, setGroupPriorite, importAll }
+  // Migration one-shot depuis localStorage
+  async function migrateFromLocalStorage() {
+    const LOCAL_KEY = 'alternance_candidatures_v2'
+    const stored = localStorage.getItem(LOCAL_KEY)
+    if (!stored) return false
+    const local = JSON.parse(stored)
+    if (!local?.length) return false
+    await importAll(local)
+    localStorage.removeItem(LOCAL_KEY)
+    return true
+  }
+
+  return { candidatures, loading, add, update, remove, updateStatut, togglePriorite, setGroupPriorite, importAll, migrateFromLocalStorage }
 }

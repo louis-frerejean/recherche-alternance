@@ -1,6 +1,6 @@
-import { Plus, Briefcase, FileUp, Star, BookOpen } from 'lucide-react'
+import { Plus, Briefcase, FileUp, Star, BookOpen, LogOut } from 'lucide-react'
 
-export default function Header({ candidatures, onAdd, onImport, onReview }) {
+export default function Header({ candidatures, onAdd, onImport, onReview, onLogout }) {
   const total = candidatures.length
   const prioritaires = candidatures.filter(c => c.priorite).length
   const entretiens = candidatures.filter(c => c.statut === 'entretien').length
@@ -50,6 +50,11 @@ export default function Header({ candidatures, onAdd, onImport, onReview }) {
             <span className="hidden sm:inline">Nouvelle candidature</span>
             <span className="sm:hidden">Ajouter</span>
           </button>
+          {onLogout && (
+            <button onClick={onLogout} title="Se déconnecter" className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+              <LogOut size={16} />
+            </button>
+          )}
         </div>
       </div>
     </header>

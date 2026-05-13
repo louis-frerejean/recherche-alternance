@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.local
+
+# Données personnelles — ne pas committer
+src/data/initial.json
