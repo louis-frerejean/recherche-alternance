@@ -7,6 +7,7 @@ import CandidatureModal from './components/CandidatureModal'
 import CompanyDetail from './components/CompanyDetail'
 import ImportExcel from './components/ImportExcel'
 import ReviewMode from './components/ReviewMode'
+import StatsModal from './components/StatsModal'
 import { useCandidatures } from './hooks/useCandidatures'
 import { groupByCompany } from './utils/groupCandidatures'
 import { Loader2 } from 'lucide-react'
@@ -38,6 +39,7 @@ function AppContent({ userId }) {
   const [openGroup, setOpenGroup] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [showImport, setShowImport] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const [reviewIndex, setReviewIndex] = useState(null)
   const [migrating, setMigrating] = useState(false)
   const [migrated, setMigrated] = useState(false)
@@ -91,6 +93,7 @@ function AppContent({ userId }) {
         candidatures={candidatures}
         onAdd={openAdd}
         onImport={() => setShowImport(true)}
+        onStats={() => setShowStats(true)}
         onReview={() => setReviewIndex(0)}
         onLogout={() => supabase.auth.signOut()}
       />
@@ -144,6 +147,10 @@ function AppContent({ userId }) {
           onSave={handleSave}
           onClose={closeModal}
         />
+      )}
+
+      {showStats && (
+        <StatsModal candidatures={candidatures} onClose={() => setShowStats(false)} />
       )}
 
       {showImport && (

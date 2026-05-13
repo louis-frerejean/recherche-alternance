@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { X, ChevronLeft, ChevronRight, Star, ExternalLink } from 'lucide-react'
 import { STATUTS } from './StatusBadge'
+import { PLATEFORMES } from './CandidatureModal'
 
 const STATUS_THEME = {
   a_envoyer: { bg: 'from-slate-100 to-slate-50',  accent: 'bg-slate-500',   text: 'text-slate-600',  ring: 'ring-slate-300' },
@@ -28,6 +29,7 @@ export default function ReviewMode({ candidatures, startIndex = 0, onUpdate, onT
       poste:           current.poste           ?? '',
       type:            current.type            ?? 'classique',
       statut:          current.statut          ?? 'a_envoyer',
+      plateforme:      current.plateforme      ?? '',
       dateCandidature: current.dateCandidature ?? '',
       dateRelance:     current.dateRelance     ?? '',
       dateEntretien:   current.dateEntretien   ?? '',
@@ -155,8 +157,8 @@ export default function ReviewMode({ candidatures, startIndex = 0, onUpdate, onT
         {/* Colonne gauche */}
         <div className={`flex flex-col gap-4 px-7 py-5 overflow-hidden bg-gradient-to-b ${heroBg} bg-opacity-30`}>
 
-          {/* Statut + Type */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Statut + Type + Plateforme */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <span className={labelCls}>Statut</span>
               <select className={inputCls} value={form.statut}
@@ -171,6 +173,16 @@ export default function ReviewMode({ candidatures, startIndex = 0, onUpdate, onT
                 <option value="classique">Classique</option>
                 <option value="spontanée">Spontanée</option>
               </select>
+            </div>
+            <div>
+              <span className={labelCls}>Plateforme</span>
+              <input className={inputCls} list="plateformes-rv"
+                value={form.plateforme} placeholder="LinkedIn…"
+                onChange={e => set('plateforme', e.target.value)}
+                onBlur={e => save('plateforme', e.target.value)} />
+              <datalist id="plateformes-rv">
+                {PLATEFORMES.map(p => <option key={p} value={p} />)}
+              </datalist>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
-import { Plus, Briefcase, FileUp, Star, BookOpen, LogOut } from 'lucide-react'
+import { Plus, Briefcase, FileUp, Star, BookOpen, LogOut, BarChart2 } from 'lucide-react'
 
-export default function Header({ candidatures, onAdd, onImport, onReview, onLogout }) {
+export default function Header({ candidatures, onAdd, onImport, onReview, onStats, onLogout }) {
   const total = candidatures.length
   const prioritaires = candidatures.filter(c => c.priorite).length
   const entretiens = candidatures.filter(c => c.statut === 'entretien').length
@@ -27,6 +27,13 @@ export default function Header({ candidatures, onAdd, onImport, onReview, onLogo
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={onStats}
+            className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+          >
+            <BarChart2 size={16} />
+            <span className="hidden lg:inline">Stats</span>
+          </button>
           <button
             onClick={onImport}
             title="Importer depuis Excel"

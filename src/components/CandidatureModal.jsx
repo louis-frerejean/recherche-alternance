@@ -2,11 +2,17 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { STATUTS } from './StatusBadge'
 
+export const PLATEFORMES = [
+  'LinkedIn', 'Indeed', 'Welcome to the Jungle', 'APEC',
+  'HelloWork', 'JobTeaser', 'Site entreprise', 'Réseau / contact', 'Spontanée',
+]
+
 const EMPTY = {
   entreprise: '',
   poste: '',
   type: 'classique',
   statut: 'a_envoyer',
+  plateforme: '',
   dateCandidature: '',
   dateRelance: '',
   dateEntretien: '',
@@ -81,8 +87,8 @@ export default function CandidatureModal({ initial, onSave, onClose }) {
             </Field>
           </div>
 
-          {/* Type + Statut */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Type + Statut + Plateforme */}
+          <div className="grid grid-cols-3 gap-3">
             <Field label="Type">
               <select className={inputCls} value={form.type} onChange={e => set('type', e.target.value)}>
                 <option value="classique">Classique</option>
@@ -93,6 +99,16 @@ export default function CandidatureModal({ initial, onSave, onClose }) {
               <select className={inputCls} value={form.statut} onChange={e => set('statut', e.target.value)}>
                 {STATUTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
+            </Field>
+            <Field label="Plateforme">
+              <input
+                className={inputCls} list="plateformes-list"
+                value={form.plateforme} onChange={e => set('plateforme', e.target.value)}
+                placeholder="LinkedIn, Indeed…"
+              />
+              <datalist id="plateformes-list">
+                {PLATEFORMES.map(p => <option key={p} value={p} />)}
+              </datalist>
             </Field>
           </div>
 
