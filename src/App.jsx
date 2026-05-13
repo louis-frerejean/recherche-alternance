@@ -39,15 +39,24 @@ function AppContent({ userId }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [showImport, setShowImport] = useState(false)
   const [reviewIndex, setReviewIndex] = useState(null)
+  const [migrating, setMigrating] = useState(false)
   const [migrated, setMigrated] = useState(false)
 
-  // Migration one-shot depuis localStorage si des données y sont
-  useEffect(() => {
-    if (loading || migrated) return
-    migrateFromLocalStorage().then(did => {
-      if (did) setMigrated(true)
-    })
-  }, [loading])
+  const localCount = (() => {
+    try {
+      const d = localStorage.getItem('alternance_candidatures_v2')
+      return d ? JSON.parse(d).length : 0
+    } catch { return 0 }
+  })()
+
+  const showMigrationBanner = !loading && !migrated && localCount > 0 && candidatures.length === 0
+
+  async function handleMigrate() {
+    setMigrating(true)
+    const did = await migrateFromLocalStorage()
+    setMigrating(false)
+    if (did) setMigrated(true)
+  }
 
   function openAdd() { setModal({ mode: 'add' }) }
   function openEdit(c) { setOpenGroup(null); setModal({ mode: 'edit', candidature: c }) }
@@ -85,6 +94,21 @@ function AppContent({ userId }) {
         onReview={() => setReviewIndex(0)}
         onLogout={() => supabase.auth.signOut()}
       />
+
+      {showMigrationBanner && (
+        <div className="bg-violet-600 text-white px-6 py-3 flex items-center justify-between gap-4 shrink-0">
+          <p className="text-sm font-medium">
+            🗂️ {localCount} candidatures trouvées sur cet appareil — les importer dans le cloud ?
+          </p>
+          <button
+            onClick={handleMigrate}
+            disabled={migrating}
+            className="shrink-0 bg-white text-violet-700 text-sm font-bold px-4 py-1.5 rounded-lg hover:bg-violet-50 disabled:opacity-60 transition-colors"
+          >
+            {migrating ? 'Import en cours…' : 'Importer'}
+          </button>
+        </div>
+      )}
 
       <main className="flex-1 overflow-hidden flex flex-col">
         <KanbanBoard
