@@ -1,4 +1,5 @@
-import { X, TrendingUp, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { X, TrendingUp, Plus, Trash2, Lock, Unlock } from 'lucide-react'
 import { STATUTS } from './StatusBadge'
 import { usePlatformStats } from '../hooks/usePlatformStats'
 
@@ -49,8 +50,9 @@ function KanbanStats({ candidatures }) {
 
 const numCls = 'w-full text-center border border-slate-200 rounded-lg px-1 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent'
 
-function NumInput({ value, onChange }) {
+function NumInput({ value, onChange, locked }) {
   function handleWheel(e) {
+    if (locked) return
     e.preventDefault()
     const delta = e.deltaY < 0 ? 1 : -1
     onChange(Math.max(0, (Number(value) || 0) + delta))
@@ -58,10 +60,11 @@ function NumInput({ value, onChange }) {
   return (
     <input
       type="number" min="0"
-      className={numCls}
+      className={`${numCls} ${locked ? 'bg-slate-50 text-slate-400 cursor-default' : ''}`}
       value={value || ''}
       placeholder="0"
-      onChange={e => onChange(Number(e.target.value) || 0)}
+      readOnly={locked}
+      onChange={e => { if (!locked) onChange(Number(e.target.value) || 0) }}
       onWheel={handleWheel}
     />
   )
@@ -69,6 +72,7 @@ function NumInput({ value, onChange }) {
 
 function PlatformStats() {
   const { platforms, update, add, remove } = usePlatformStats()
+  const [locked, setLocked] = useState(true)
 
   const totaux = platforms.reduce((acc, p) => ({
     total:       acc.total + (Number(p.total) || 0),
@@ -93,11 +97,24 @@ function PlatformStats() {
 
       {/* Tableau éditable */}
       <div>
-        {/* En-têtes */}
-        <div className="grid grid-cols-[1fr_52px_52px_52px_52px_28px] gap-1.5 mb-1 px-0.5">
-          {['Plateforme', 'Total', 'Refus', 'Sans rép.', 'Entretien', ''].map(h => (
-            <span key={h} className="text-[10px] font-bold text-slate-400 uppercase tracking-wide text-center first:text-left">{h}</span>
-          ))}
+        {/* En-têtes + cadenas */}
+        <div className="flex items-center justify-between mb-1 px-0.5">
+          <div className="grid grid-cols-[1fr_52px_52px_52px_52px_28px] gap-1.5 flex-1">
+            {['Plateforme', 'Total', 'Refus', 'Sans rép.', 'Entretien', ''].map(h => (
+              <span key={h} className="text-[10px] font-bold text-slate-400 uppercase tracking-wide text-center first:text-left">{h}</span>
+            ))}
+          </div>
+          <button
+            onClick={() => setLocked(l => !l)}
+            title={locked ? 'Déverrouiller pour modifier' : 'Verrouiller'}
+            className={`ml-2 p-1.5 rounded-lg border transition-colors shrink-0 ${
+              locked
+                ? 'border-slate-200 text-slate-400 hover:border-violet-300 hover:text-violet-600'
+                : 'border-violet-300 bg-violet-50 text-violet-600'
+            }`}
+          >
+            {locked ? <Lock size={13} /> : <Unlock size={13} />}
+          </button>
         </div>
 
         {/* Lignes */}
@@ -105,21 +122,23 @@ function PlatformStats() {
           {platforms.map(p => (
             <div key={p.id} className="grid grid-cols-[1fr_52px_52px_52px_52px_28px] gap-1.5 items-center">
               <input
-                className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+                className={`border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent ${locked ? 'bg-slate-50 text-slate-400 cursor-default' : ''}`}
                 value={p.nom}
                 placeholder="Plateforme…"
-                onChange={e => update(p.id, 'nom', e.target.value)}
+                readOnly={locked}
+                onChange={e => { if (!locked) update(p.id, 'nom', e.target.value) }}
               />
               {['total', 'refus', 'sansReponse', 'entretiens'].map(field => (
                 <NumInput
                   key={field}
                   value={p[field]}
+                  locked={locked}
                   onChange={val => update(p.id, field, val)}
                 />
               ))}
               <button
-                onClick={() => remove(p.id)}
-                className="flex items-center justify-center p-1.5 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
+                onClick={() => !locked && remove(p.id)}
+                className={`flex items-center justify-center p-1.5 rounded-lg transition-colors ${locked ? 'text-slate-200 cursor-default' : 'hover:bg-red-50 text-slate-300 hover:text-red-500'}`}
               >
                 <Trash2 size={13} />
               </button>
@@ -127,12 +146,14 @@ function PlatformStats() {
           ))}
         </div>
 
-        <button
-          onClick={add}
-          className="mt-3 flex items-center gap-1.5 text-xs text-violet-600 hover:text-violet-800 font-medium transition-colors"
-        >
-          <Plus size={13} /> Ajouter une plateforme
-        </button>
+        {!locked && (
+          <button
+            onClick={add}
+            className="mt-3 flex items-center gap-1.5 text-xs text-violet-600 hover:text-violet-800 font-medium transition-colors"
+          >
+            <Plus size={13} /> Ajouter une plateforme
+          </button>
+        )}
       </div>
     </div>
   )
