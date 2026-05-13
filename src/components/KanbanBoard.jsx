@@ -69,7 +69,7 @@ export default function KanbanBoard({ candidatures, onOpenGroup, onToggleGroupPr
   const groups = groupByCompany(candidatures)
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-6 px-6 pt-4 min-h-0 flex-1">
+    <div className="flex gap-3 pb-4 px-4 pt-4 min-h-0 flex-1">
       {COLUMNS.map(col => {
         const colGroups = groups.filter(col.filter)
         return (
@@ -90,7 +90,7 @@ export default function KanbanBoard({ candidatures, onOpenGroup, onToggleGroupPr
 function KanbanColumn({ col, groups, isClosed, onOpenGroup, onToggleGroupPriorite }) {
   const { Icon } = col
   return (
-    <div className={`flex-shrink-0 w-72 flex flex-col rounded-2xl border-2 ${col.border} ${col.body} overflow-hidden shadow-sm`}>
+    <div className={`flex-1 min-w-0 flex flex-col rounded-2xl border-2 ${col.border} ${col.body} overflow-hidden shadow-sm`}>
       <div className={`${col.header} px-4 py-3 flex items-center justify-between shrink-0`}>
         <div className="flex items-center gap-2.5">
           <Icon size={15} className={col.id === 'priority' ? 'fill-white text-white' : 'text-white/90'} />

@@ -231,52 +231,51 @@ function KanbanSection({ candidatures }) {
 // ── Vue principale ─────────────────────────────────────────────────────────
 
 export default function StatsView({ candidatures, platforms, onUpdate, onUpdateNom, onAdd, onRemove }) {
-  const kTotal = candidatures.length
+  const kTotal      = candidatures.length
   const kEntretiens = candidatures.filter(c => c.statut === 'entretien').length
   const kAcceptes   = candidatures.filter(c => c.statut === 'accepte').length
   const kRelance    = candidatures.filter(c => c.statut === 'relance').length
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50">
-      <div className="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-8">
+    <div className="flex-1 overflow-hidden bg-slate-50 flex flex-col">
+      <div className="flex-1 overflow-auto px-6 py-6">
+        <div className="max-w-screen-xl mx-auto flex flex-col gap-5 h-full">
 
-        {/* Global */}
-        <GlobalSection candidatures={candidatures} platforms={platforms} />
+          {/* Bannière globale — pleine largeur */}
+          <GlobalSection candidatures={candidatures} platforms={platforms} />
 
-        {/* KPIs kanban */}
-        <div>
-          <SectionTitle>Dans l'app — vue rapide</SectionTitle>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <KpiCard label="Candidatures" value={kTotal} />
-            <KpiCard label="Entretiens" value={kEntretiens} accent="text-violet-600" bg="bg-violet-50" />
-            <KpiCard label="Relancé" value={kRelance} accent="text-amber-600" bg="bg-amber-50" />
-            <KpiCard label="Acceptés" value={kAcceptes} accent="text-emerald-600" bg="bg-emerald-50" />
+          {/* 2 colonnes */}
+          <div className="grid grid-cols-2 gap-5 flex-1 min-h-0">
+
+            {/* Colonne gauche : kanban stats */}
+            <div className="flex flex-col gap-5">
+              <div className="grid grid-cols-2 gap-3">
+                <KpiCard label="Candidatures" value={kTotal} />
+                <KpiCard label="Entretiens"   value={kEntretiens} accent="text-violet-600" bg="bg-violet-50" />
+                <KpiCard label="Relancé"      value={kRelance}    accent="text-amber-600"  bg="bg-amber-50" />
+                <KpiCard label="Acceptés"     value={kAcceptes}   accent="text-emerald-600" bg="bg-emerald-50" />
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 px-5 py-4 flex-1">
+                <SectionTitle>Répartition par statut</SectionTitle>
+                <KanbanSection candidatures={candidatures} />
+              </div>
+            </div>
+
+            {/* Colonne droite : plateformes */}
+            <div className="bg-white rounded-2xl border border-slate-200 px-5 py-4 overflow-auto">
+              <SectionTitle>Par plateforme</SectionTitle>
+              <PlatformsSection
+                candidatures={candidatures}
+                platforms={platforms}
+                onUpdate={onUpdate}
+                onUpdateNom={onUpdateNom}
+                onAdd={onAdd}
+                onRemove={onRemove}
+              />
+            </div>
+
           </div>
         </div>
-
-        {/* Détail par statut */}
-        <div>
-          <SectionTitle>Répartition par statut (kanban)</SectionTitle>
-          <div className="bg-white rounded-2xl border border-slate-200 px-5 py-4">
-            <KanbanSection candidatures={candidatures} />
-          </div>
-        </div>
-
-        {/* Plateformes */}
-        <div>
-          <SectionTitle>Par plateforme</SectionTitle>
-          <div className="bg-white rounded-2xl border border-slate-200 px-5 py-4">
-            <PlatformsSection
-              candidatures={candidatures}
-              platforms={platforms}
-              onUpdate={onUpdate}
-              onUpdateNom={onUpdateNom}
-              onAdd={onAdd}
-              onRemove={onRemove}
-            />
-          </div>
-        </div>
-
       </div>
     </div>
   )
