@@ -1,72 +1,64 @@
 import { useEffect, useState, useCallback } from 'react'
-import { X, ChevronLeft, ChevronRight, Star, ExternalLink, Zap } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Star, ExternalLink } from 'lucide-react'
 import { STATUTS } from './StatusBadge'
 
-const inputCls = 'w-full bg-white/80 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition placeholder:text-slate-300'
-const labelCls = 'text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1 block'
-
-function Field({ label, children }) {
-  return (
-    <div className="flex flex-col">
-      <span className={labelCls}>{label}</span>
-      {children}
-    </div>
-  )
+const STATUS_THEME = {
+  a_envoyer: { bg: 'from-slate-100 to-slate-50',  accent: 'bg-slate-500',   text: 'text-slate-600',  ring: 'ring-slate-300' },
+  envoye:    { bg: 'from-blue-100 to-blue-50',    accent: 'bg-blue-500',    text: 'text-blue-700',   ring: 'ring-blue-300' },
+  relance:   { bg: 'from-amber-100 to-amber-50',  accent: 'bg-amber-500',   text: 'text-amber-700',  ring: 'ring-amber-300' },
+  entretien: { bg: 'from-violet-100 to-violet-50',accent: 'bg-violet-500',  text: 'text-violet-700', ring: 'ring-violet-300' },
+  refus:     { bg: 'from-red-100 to-red-50',      accent: 'bg-red-500',     text: 'text-red-700',    ring: 'ring-red-300' },
+  accepte:   { bg: 'from-emerald-100 to-emerald-50', accent: 'bg-emerald-500', text: 'text-emerald-700', ring: 'ring-emerald-300' },
 }
+
+const inputCls = 'w-full bg-white/70 border border-white/60 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-white/80 focus:bg-white transition placeholder:text-slate-300 shadow-sm'
+const labelCls = 'text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block'
 
 export default function ReviewMode({ candidatures, startIndex = 0, onUpdate, onTogglePriorite, onClose }) {
   const [idx, setIdx] = useState(() => Math.min(startIndex, candidatures.length - 1))
   const [form, setForm] = useState(null)
 
   const current = candidatures[idx]
+  const theme = STATUS_THEME[current?.statut] ?? STATUS_THEME.a_envoyer
 
-  // Sync form when navigating
   useEffect(() => {
     if (!current) return
     setForm({
-      entreprise: current.entreprise ?? '',
-      poste: current.poste ?? '',
-      type: current.type ?? 'classique',
-      statut: current.statut ?? 'a_envoyer',
+      entreprise:      current.entreprise      ?? '',
+      poste:           current.poste           ?? '',
+      type:            current.type            ?? 'classique',
+      statut:          current.statut          ?? 'a_envoyer',
       dateCandidature: current.dateCandidature ?? '',
-      dateRelance: current.dateRelance ?? '',
-      dateEntretien: current.dateEntretien ?? '',
-      contact: { nom: current.contact?.nom ?? '', email: current.contact?.email ?? '', tel: current.contact?.tel ?? '' },
+      dateRelance:     current.dateRelance     ?? '',
+      dateEntretien:   current.dateEntretien   ?? '',
+      contact: {
+        nom:   current.contact?.nom   ?? '',
+        email: current.contact?.email ?? '',
+        tel:   current.contact?.tel   ?? '',
+      },
       lienOffre: current.lienOffre ?? '',
-      notes: current.notes ?? '',
+      notes:     current.notes     ?? '',
     })
   }, [idx, current?.id])
 
-  const saveField = useCallback((field, value) => {
+  const save = useCallback((field, value) => {
     if (!current) return
-    if (field === 'contact') {
-      onUpdate(current.id, { contact: value })
-    } else {
-      onUpdate(current.id, { [field]: value })
-    }
+    onUpdate(current.id, field === 'contact' ? { contact: value } : { [field]: value })
   }, [current, onUpdate])
 
-  function setField(field, value) {
-    setForm(f => ({ ...f, [field]: value }))
-  }
+  function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
+  function setContact(sub, value) { setForm(f => ({ ...f, contact: { ...f.contact, [sub]: value } })) }
 
-  function setContactField(subField, value) {
-    setForm(f => ({ ...f, contact: { ...f.contact, [subField]: value } }))
-  }
-
-  const goNext = useCallback(() => {
-    if (idx < candidatures.length - 1) setIdx(i => i + 1)
-  }, [idx, candidatures.length])
-
-  const goPrev = useCallback(() => {
-    if (idx > 0) setIdx(i => i - 1)
-  }, [idx])
+  const goNext = useCallback(() => { if (idx < candidatures.length - 1) setIdx(i => i + 1) }, [idx, candidatures.length])
+  const goPrev = useCallback(() => { if (idx > 0) setIdx(i => i - 1) }, [idx])
 
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') goNext()
-      if (e.key === 'ArrowLeft' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') goPrev()
+      const tag = e.target.tagName
+      if (e.key === 'Escape') { onClose(); return }
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === 'ArrowRight') goNext()
+      if (e.key === 'ArrowLeft') goPrev()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -74,205 +66,197 @@ export default function ReviewMode({ candidatures, startIndex = 0, onUpdate, onT
 
   if (!current || !form) return null
 
-  const isPriorite = current.priorite ?? false
-  const progress = ((idx + 1) / candidatures.length) * 100
+  const isPrio = current.priorite ?? false
+  const heroBg = isPrio ? 'from-amber-200 via-yellow-100 to-amber-50' : theme.bg
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-100 overflow-hidden">
 
-      {/* Top bar */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors">
-            <X size={18} />
+      {/* ── Top bar ── */}
+      <div className="flex items-center justify-between px-5 py-2.5 bg-white/80 backdrop-blur border-b border-slate-200 shrink-0">
+        <div className="flex items-center gap-3">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+            <X size={17} />
           </button>
-          <div className="h-4 w-px bg-slate-200" />
-          <span className="text-sm font-medium text-slate-500">
-            Mode Review — <span className="text-slate-900">{idx + 1}</span> / {candidatures.length}
+          <span className="text-sm font-semibold text-slate-500">
+            Mode Review &nbsp;
+            <span className="text-slate-900 tabular-nums">{idx + 1}</span>
+            <span className="text-slate-400"> / {candidatures.length}</span>
           </span>
         </div>
 
-        {/* Progress bar */}
-        <div className="flex-1 max-w-xs h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        {/* Progress */}
+        <div className="flex-1 mx-6 h-1.5 bg-slate-100 rounded-full overflow-hidden">
           <div
-            className="h-full bg-violet-500 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
+            className={`h-full rounded-full transition-all duration-300 ${isPrio ? 'bg-amber-400' : theme.accent}`}
+            style={{ width: `${((idx + 1) / candidatures.length) * 100}%` }}
           />
         </div>
 
-        {/* Navigation */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={goPrev}
-            disabled={idx === 0}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
-          >
-            <ChevronLeft size={16} /> Préc.
+          <button onClick={goPrev} disabled={idx === 0}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-25 rounded-lg transition-colors">
+            <ChevronLeft size={15} /> Préc.
           </button>
-          <button
-            onClick={goNext}
-            disabled={idx === candidatures.length - 1}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
-          >
-            Suiv. <ChevronRight size={16} />
+          <button onClick={goNext} disabled={idx === candidatures.length - 1}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-25 rounded-lg transition-colors">
+            Suiv. <ChevronRight size={15} />
           </button>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-8">
-
-          {/* Hero : entreprise + priorité */}
-          <div className="flex items-start gap-4">
-            <div className="flex-1 min-w-0">
-              <input
-                className="w-full text-3xl font-bold text-slate-900 bg-transparent border-b-2 border-transparent hover:border-slate-200 focus:border-violet-400 focus:outline-none pb-1 transition-colors placeholder:text-slate-300"
-                value={form.entreprise}
-                onChange={e => setField('entreprise', e.target.value)}
-                onBlur={e => saveField('entreprise', e.target.value)}
-                placeholder="Nom de l'entreprise"
-              />
-              <input
-                className="w-full text-base text-slate-500 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-violet-400 focus:outline-none mt-1 pb-1 transition-colors placeholder:text-slate-300"
-                value={form.poste}
-                onChange={e => setField('poste', e.target.value)}
-                onBlur={e => saveField('poste', e.target.value)}
-                placeholder="Intitulé du poste (optionnel)"
-              />
-            </div>
-            <button
-              onClick={() => onTogglePriorite(current.id)}
-              className={`p-3 rounded-2xl border-2 transition-all ${isPriorite
-                ? 'bg-amber-50 border-amber-300 text-amber-500'
-                : 'bg-white border-slate-200 text-slate-300 hover:border-amber-300 hover:text-amber-400'
-              }`}
-              title={isPriorite ? 'Retirer la priorité' : 'Marquer comme try hard'}
-            >
-              <Star size={22} className={isPriorite ? 'fill-amber-400' : ''} />
-            </button>
+      {/* ── Hero ── */}
+      <div className={`bg-gradient-to-br ${heroBg} px-8 pt-5 pb-4 shrink-0 border-b border-white/60`}>
+        <div className="flex items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <input
+              className="w-full text-2xl font-extrabold text-slate-900 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-slate-500 focus:outline-none pb-0.5 transition-colors placeholder:text-slate-300"
+              value={form.entreprise}
+              onChange={e => set('entreprise', e.target.value)}
+              onBlur={e => save('entreprise', e.target.value)}
+              placeholder="Entreprise"
+            />
+            <input
+              className="w-full text-sm text-slate-500 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-slate-400 focus:outline-none mt-1 pb-0.5 transition-colors placeholder:text-slate-300"
+              value={form.poste}
+              onChange={e => set('poste', e.target.value)}
+              onBlur={e => save('poste', e.target.value)}
+              placeholder="Poste visé (optionnel)"
+            />
           </div>
 
-          {isPriorite && (
-            <div className="flex items-center gap-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
-              <Star size={15} className="fill-amber-400 text-amber-400 shrink-0" />
-              Candidature prioritaire — tu veux try hard celle-là
-            </div>
-          )}
+          {/* Priority toggle — gros et visible */}
+          <button
+            onClick={() => onTogglePriorite(current.id)}
+            className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-2xl border-2 transition-all shrink-0
+              ${isPrio
+                ? 'bg-amber-400 border-amber-500 text-white shadow-lg shadow-amber-200 scale-105'
+                : 'bg-white/60 border-slate-200 text-slate-300 hover:border-amber-300 hover:text-amber-400'}`}
+          >
+            <Star size={22} className={isPrio ? 'fill-white' : ''} />
+            <span className={`text-[10px] font-bold uppercase tracking-wide ${isPrio ? 'text-white' : 'text-slate-400'}`}>
+              {isPrio ? 'Try Hard' : 'Priorité'}
+            </span>
+          </button>
+        </div>
+
+        {/* Priority banner */}
+        {isPrio && (
+          <div className="mt-3 flex items-center gap-2 bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl w-fit shadow">
+            <Star size={12} className="fill-white" />
+            CANDIDATURE PRIORITAIRE — TRY HARD
+          </div>
+        )}
+      </div>
+
+      {/* ── Body : 2 colonnes sans scroll ── */}
+      <div className="flex-1 grid grid-cols-2 divide-x divide-slate-200 min-h-0 overflow-hidden">
+
+        {/* Colonne gauche */}
+        <div className={`flex flex-col gap-4 px-7 py-5 overflow-hidden bg-gradient-to-b ${heroBg} bg-opacity-30`}>
 
           {/* Statut + Type */}
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Statut">
-              <select
-                className={inputCls}
-                value={form.statut}
-                onChange={e => { setField('statut', e.target.value); saveField('statut', e.target.value) }}
-              >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className={labelCls}>Statut</span>
+              <select className={inputCls} value={form.statut}
+                onChange={e => { set('statut', e.target.value); save('statut', e.target.value) }}>
                 {STATUTS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
-            </Field>
-            <Field label="Type">
-              <select
-                className={inputCls}
-                value={form.type}
-                onChange={e => { setField('type', e.target.value); saveField('type', e.target.value) }}
-              >
-                <option value="classique">Candidature classique</option>
-                <option value="spontanée">Candidature spontanée</option>
+            </div>
+            <div>
+              <span className={labelCls}>Type</span>
+              <select className={inputCls} value={form.type}
+                onChange={e => { set('type', e.target.value); save('type', e.target.value) }}>
+                <option value="classique">Classique</option>
+                <option value="spontanée">Spontanée</option>
               </select>
-            </Field>
-          </div>
-
-          {/* Chronologie */}
-          <div>
-            <span className={labelCls}>Chronologie</span>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Date d'envoi">
-                <input type="date" className={inputCls} value={form.dateCandidature}
-                  onChange={e => setField('dateCandidature', e.target.value)}
-                  onBlur={e => saveField('dateCandidature', e.target.value)} />
-              </Field>
-              <Field label="Date de relance">
-                <input type="date" className={inputCls} value={form.dateRelance}
-                  onChange={e => setField('dateRelance', e.target.value)}
-                  onBlur={e => saveField('dateRelance', e.target.value)} />
-              </Field>
-              <Field label="Date d'entretien">
-                <input type="date" className={inputCls} value={form.dateEntretien}
-                  onChange={e => setField('dateEntretien', e.target.value)}
-                  onBlur={e => saveField('dateEntretien', e.target.value)} />
-              </Field>
             </div>
           </div>
 
-          {/* Contact */}
+          {/* Dates */}
           <div>
-            <span className={labelCls}>Contact</span>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Nom">
-                <input className={inputCls} value={form.contact.nom} placeholder="Nom"
-                  onChange={e => setContactField('nom', e.target.value)}
-                  onBlur={() => saveField('contact', form.contact)} />
-              </Field>
-              <Field label="Email">
-                <input type="email" className={inputCls} value={form.contact.email} placeholder="email@…"
-                  onChange={e => setContactField('email', e.target.value)}
-                  onBlur={() => saveField('contact', form.contact)} />
-              </Field>
-              <Field label="Téléphone">
-                <input className={inputCls} value={form.contact.tel} placeholder="06…"
-                  onChange={e => setContactField('tel', e.target.value)}
-                  onBlur={() => saveField('contact', form.contact)} />
-              </Field>
+            <span className={labelCls}>Chronologie</span>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Envoi',     field: 'dateCandidature' },
+                { label: 'Relance',   field: 'dateRelance' },
+                { label: 'Entretien', field: 'dateEntretien' },
+              ].map(({ label, field }) => (
+                <div key={field}>
+                  <span className="text-[10px] text-slate-400 block mb-1">{label}</span>
+                  <input type="date" className={inputCls} value={form[field]}
+                    onChange={e => set(field, e.target.value)}
+                    onBlur={e => save(field, e.target.value)} />
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Lien offre */}
-          <Field label="Lien de l'offre">
+          <div>
+            <span className={labelCls}>Lien de l'offre</span>
             <div className="flex gap-2">
               <input className={inputCls} value={form.lienOffre} placeholder="https://…"
-                onChange={e => setField('lienOffre', e.target.value)}
-                onBlur={e => saveField('lienOffre', e.target.value)} />
+                onChange={e => set('lienOffre', e.target.value)}
+                onBlur={e => save('lienOffre', e.target.value)} />
               {form.lienOffre && (
                 <a href={form.lienOffre} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-2 text-sm text-violet-600 border border-violet-200 bg-violet-50 rounded-xl hover:bg-violet-100 transition-colors shrink-0">
+                  className="flex items-center px-3 border border-white/60 bg-white/70 rounded-xl text-slate-500 hover:bg-white transition-colors shadow-sm shrink-0">
                   <ExternalLink size={14} />
                 </a>
               )}
             </div>
-          </Field>
+          </div>
+        </div>
 
-          {/* Notes */}
-          <Field label="Notes & contexte">
+        {/* Colonne droite */}
+        <div className="flex flex-col gap-4 px-7 py-5 overflow-hidden bg-white/40">
+
+          {/* Contact */}
+          <div>
+            <span className={labelCls}>Contact</span>
+            <div className="flex flex-col gap-2">
+              {[
+                { label: 'Nom',       sub: 'nom',   type: 'text',  ph: 'Prénom NOM' },
+                { label: 'Email',     sub: 'email', type: 'email', ph: 'email@entreprise.com' },
+                { label: 'Téléphone', sub: 'tel',   type: 'text',  ph: '06…' },
+              ].map(({ label, sub, type, ph }) => (
+                <div key={sub} className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 w-16 shrink-0 text-right">{label}</span>
+                  <input type={type} className={inputCls} value={form.contact[sub]} placeholder={ph}
+                    onChange={e => setContact(sub, e.target.value)}
+                    onBlur={() => save('contact', form.contact)} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes — remplit le reste */}
+          <div className="flex flex-col flex-1 min-h-0">
+            <span className={labelCls}>Notes & contexte</span>
             <textarea
-              className={`${inputCls} resize-none leading-relaxed`}
-              rows={6}
+              className={`${inputCls} flex-1 resize-none leading-relaxed`}
               value={form.notes}
               placeholder="Infos utiles, retours, impressions, prochaine action…"
-              onChange={e => setField('notes', e.target.value)}
-              onBlur={e => saveField('notes', e.target.value)}
+              onChange={e => set('notes', e.target.value)}
+              onBlur={e => save('notes', e.target.value)}
             />
-          </Field>
-
+          </div>
         </div>
       </div>
 
-      {/* Bottom nav (mobile friendly) */}
-      <div className="bg-white border-t border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
-        <button
-          onClick={goPrev}
-          disabled={idx === 0}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl transition-colors"
-        >
-          <ChevronLeft size={16} /> Précédent
+      {/* ── Bottom bar ── */}
+      <div className="flex items-center justify-between px-5 py-2.5 bg-white/80 backdrop-blur border-t border-slate-200 shrink-0">
+        <button onClick={goPrev} disabled={idx === 0}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-25 rounded-xl transition-colors">
+          <ChevronLeft size={15} /> Précédent
         </button>
-        <span className="text-xs text-slate-400 tabular-nums">← → pour naviguer · Échap pour quitter</span>
-        <button
-          onClick={goNext}
-          disabled={idx === candidatures.length - 1}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-30 disabled:cursor-not-allowed rounded-xl transition-colors shadow-sm"
-        >
-          Suivant <ChevronRight size={16} />
+        <span className="text-xs text-slate-400">← → pour naviguer · Échap pour quitter · Sauvegarde auto</span>
+        <button onClick={goNext} disabled={idx === candidatures.length - 1}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl transition-colors shadow-sm disabled:opacity-25
+            ${isPrio ? 'bg-amber-500 hover:bg-amber-600' : 'bg-violet-600 hover:bg-violet-700'}`}>
+          Suivant <ChevronRight size={15} />
         </button>
       </div>
     </div>

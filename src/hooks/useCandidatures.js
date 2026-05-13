@@ -44,9 +44,14 @@ export function useCandidatures() {
     setCandidatures(prev => prev.map(c => c.id === id ? { ...c, priorite: !c.priorite } : c))
   }
 
+  function setGroupPriorite(ids, value) {
+    const set = new Set(ids)
+    setCandidatures(prev => prev.map(c => set.has(c.id) ? { ...c, priorite: value } : c))
+  }
+
   function importAll(newList) {
     setCandidatures(newList)
   }
 
-  return { candidatures, add, update, remove, updateStatut, togglePriorite, importAll }
+  return { candidatures, add, update, remove, updateStatut, togglePriorite, setGroupPriorite, importAll }
 }

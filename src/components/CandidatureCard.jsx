@@ -6,13 +6,14 @@ function formatDate(str) {
   return new Date(str).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
-export default function CandidatureCard({ candidature, onEdit, onDelete, onChangeStatut, onTogglePriorite, onOpen }) {
+export default function CandidatureCard({ candidature, muted, onEdit, onDelete, onChangeStatut, onTogglePriorite, onOpen }) {
   const { entreprise, poste, type, statut, priorite, dateCandidature, dateEntretien, contact, lienOffre, notes } = candidature
 
   return (
     <div
       onClick={onOpen}
       className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all p-4 flex flex-col gap-3 cursor-pointer group
+        ${muted ? 'opacity-60 hover:opacity-100' : ''}
         ${priorite ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200 hover:border-violet-200'}`}
     >
       {/* Header */}
