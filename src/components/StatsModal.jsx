@@ -49,6 +49,24 @@ function KanbanStats({ candidatures }) {
 
 const numCls = 'w-full text-center border border-slate-200 rounded-lg px-1 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent'
 
+function NumInput({ value, onChange }) {
+  function handleWheel(e) {
+    e.preventDefault()
+    const delta = e.deltaY < 0 ? 1 : -1
+    onChange(Math.max(0, (Number(value) || 0) + delta))
+  }
+  return (
+    <input
+      type="number" min="0"
+      className={numCls}
+      value={value || ''}
+      placeholder="0"
+      onChange={e => onChange(Number(e.target.value) || 0)}
+      onWheel={handleWheel}
+    />
+  )
+}
+
 function PlatformStats() {
   const { platforms, update, add, remove } = usePlatformStats()
 
@@ -93,13 +111,10 @@ function PlatformStats() {
                 onChange={e => update(p.id, 'nom', e.target.value)}
               />
               {['total', 'refus', 'sansReponse', 'entretiens'].map(field => (
-                <input
+                <NumInput
                   key={field}
-                  type="number" min="0"
-                  className={numCls}
-                  value={p[field] || ''}
-                  placeholder="0"
-                  onChange={e => update(p.id, field, Number(e.target.value) || 0)}
+                  value={p[field]}
+                  onChange={val => update(p.id, field, val)}
                 />
               ))}
               <button
