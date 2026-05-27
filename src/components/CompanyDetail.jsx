@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { X, Star, Pencil, Trash2, ExternalLink, Calendar, User, Phone, Mail, Zap, Building2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, Star, Pencil, Trash2, ExternalLink, Calendar, User, Phone, Mail, Zap, Building2, Copy, Check } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import { groupBestStatut, groupIsPriority } from '../utils/groupCandidatures'
 
@@ -20,9 +20,46 @@ function InfoRow({ icon: Icon, value, href }) {
   )
 }
 
+function buildPromptText(group) {
+  const { entreprise, items } = group
+  const isPrio = groupIsPriority(items)
+  const lines = []
+
+  lines.push(`Entreprise : ${entreprise}`)
+  if (isPrio) lines.push('[ Try Hard ]')
+  lines.push('')
+
+  items.forEach((item, i) => {
+    if (items.length > 1) lines.push(`--- Candidature #${i + 1} ---`)
+    if (item.poste) lines.push(`Poste : ${item.poste}`)
+    if (item.statut) lines.push(`Statut : ${item.statut}`)
+    if (item.type && item.type !== 'classique') lines.push(`Type : ${item.type}`)
+    if (item.plateforme) lines.push(`Plateforme : ${item.plateforme}`)
+    if (item.dateCandidature) lines.push(`Date de candidature : ${fmt(item.dateCandidature)}`)
+    if (item.dateRelance) lines.push(`Date de relance : ${fmt(item.dateRelance)}`)
+    if (item.dateEntretien) lines.push(`Date d'entretien : ${fmt(item.dateEntretien)}`)
+    if (item.contact?.nom || item.contact?.email || item.contact?.tel) {
+      const parts = [item.contact.nom, item.contact.email, item.contact.tel].filter(Boolean)
+      lines.push(`Contact : ${parts.join(' | ')}`)
+    }
+    if (item.lienOffre) lines.push(`Lien offre : ${item.lienOffre}`)
+    if (item.notes) lines.push(`Notes :\n${item.notes}`)
+    if (items.length > 1 && i < items.length - 1) lines.push('')
+  })
+
+  return lines.join('\n')
+}
+
 export default function CompanyDetail({ group, onEdit, onDelete, onToggleGroupPriorite, onClose }) {
   const { entreprise, items } = group
   const isPrio = groupIsPriority(items)
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(buildPromptText(group))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   useEffect(() => {
     const fn = e => { if (e.key === 'Escape') onClose() }
@@ -50,9 +87,18 @@ export default function CompanyDetail({ group, onEdit, onDelete, onToggleGroupPr
                 <p className="text-xs text-slate-400">{items.length} contact{items.length > 1 ? 's' : ''}</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 shrink-0">
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={handleCopy}
+                title="Copier pour un prompt IA"
+                className={`p-1.5 rounded-lg transition-colors ${copied ? 'bg-green-50 text-green-600' : 'hover:bg-slate-100 text-slate-400'}`}
+              >
+                {copied ? <Check size={18} /> : <Copy size={18} />}
+              </button>
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 mt-3 flex-wrap">
